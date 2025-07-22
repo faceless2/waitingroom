@@ -1,0 +1,77 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    font: 8vh/1 sans-serif;
+}
+video, img {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+}
+#marquee {
+    position:absolute;
+    bottom: 0;
+    height: 1.1em;
+    width: 100vw;
+    background: #FFF8;
+    white-space: nowrap;
+}
+#marquee > * {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+}
+#marquee > * > span::after {
+    content: "\2022";
+    padding: 0 1em;
+}
+#clock {
+    position: absolute;
+    background: #FFF8;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 1.1em;
+    text-align: center;
+}
+.fade {
+    animation: 1s linear forwards fade-out;
+}
+.fade.fade-active {
+    animation: 1s linear forwards fade-in;
+}
+img.fade.fade-active.kenburns {
+    animation: 1s linear forwards fade-in, 40s linear forwards kenburns
+}
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+    display: block;
+  }
+  100% {
+    opacity: 0;
+    display: none;
+  }
+}
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    display: block;
+  }
+  100% {
+    opacity: 1;
+    display: block;
+  }
+}
+@keyframes kenburns{
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.4);
+  }
+}
