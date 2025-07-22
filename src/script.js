@@ -1,39 +1,81 @@
+const screenWidth = window.innerWidth;
+let running = true;
 let config;
-let lastScroll = null;
 let lastModified = null;
-let marquee = [];
 let index = -1;
 let nextChange = 0;
-let lastupdate = 0;
-const screenWidth = window.innerWidth;
+let marquee;
 
 function scroller() {
-    for (let i=0;i<2;i++) {
-        let e = marquee[i];
+    let next;
+    for (let e=marquee.firstChild;e;e=next) {
+        next = e.nextSibling;
         let t = (Date.now() - e.time0) / (e.time1 - e.time0);
         if (t < 0 || t > 1) {
-            nextItem(e);
+            bump(e);
+            if (e.parentElement) {
+                next = e.nextSibling;
+            }
             t = 0;
         }
         e.x = e.x0 + t * (e.x1 - e.x0);
+        if (isNaN(e.x)) throw new Error("NaN point!");
         e.style.transform = "translate(" + Math.round(e.x) + "px, 0)";
     }
-    requestAnimationFrame(scroller);
+    if (running) {
+        requestAnimationFrame(scroller);
+    }
 }
 
-function nextItem(marqueeChange) {
-    const first = marqueeChange == null;
-    console.log("nextItem: updatdating marquee " + (first ? "all" : marqueeChange.id));
-    if (Date.now() > nextChange) {
+function desc(e) {
+    if (!e.nextSibling) {
+        return "right";
+    } else if (!e.previousSibling) {
+        return "left";
+    } else {
+        let i = 1;
+        for (let n = e.parentNode.firstChild;n;n=n.nextSibling) {
+            if (n == e) {
+                break;
+            }
+            i++;
+        }
+        return "child #" + i;
+    }
+}
+
+function setScroll(e, end) {
+    if (typeof end != "number") {
+        end = e.x < screenWidth ? -e.width : screenWidth;
+    }
+    e.x0 = e.x;
+    e.x1 = end;
+    e.time0 = Date.now();
+    e.time1 = e.time0 + Math.abs(e.x0 - e.x1) / config.speed * 1000;
+//    console.log("  set " + desc(e) + " to " + e.x0 + "@" + (e.time0-Date.now()) + " to " + e.x1 + "@" + (e.time1-Date.now()));
+}
+
+/**
+ * Either we're adding content for the first time,
+ * or an item has scrolled to the end of it's run;
+ * either its scrolled completely off the left-edge
+ * or it's about to scroll onto the right-edge
+ * @param e the item, or null if we are initializing.
+ */
+function bump(e) {
+    const first = e == null;
+    const rightEdge = first || e.x1 > 0;
+    console.log("bump: " + (first ? "all" : desc(e)) + " at " + (rightEdge ? "right-edge":"left-edge")+ (first?"":": x="+e.x+" w="+e.width));
+    if (Date.now() > nextChange && rightEdge) {
         index++;
-        console.log("  first changing image to " + index);
         if (index == config.content.length) {
             index = 0;
         }
+        console.log("  setting index=" + index);
         let content = config.content[index];
         let time = content.time;
-        if (typeof time != "number" || time <= 5000) {
-            time = 5000;
+        if (typeof time != "number" || time <= 1) {
+            time = 1;
         }
         let target;
         if ((index & 1) == 1 && content.video) {
@@ -53,38 +95,78 @@ function nextItem(marqueeChange) {
         }
         nextChange = Date.now() + time;
     }
-    for (let i=0;i<2;i++) {
-        const e = marquee[i];
-        if (marqueeChange == null || e == marqueeChange) {
-            if (e.index != index) {
-                while (e.firstChild) {
-                    e.firstChild.remove();
-                }
-                config.content[index].text.forEach((t) => {
-                    let s = document.createElement("span");
-                    s.innerHTML = t;
-                    e.appendChild(s);
-                });
-                let html = e.innerHTML;
-                while (e.clientWidth < screenWidth) {
-                    e.innerHTML += html;
-                }
-                e.index = index;
-                e.width = e.clientWidth;
+    if (first) {
+        while (marquee.childElementCount < 2 || marquee.lastChild.x < screenWidth) {
+            setScroll(buildMarquee(null));
+        }
+        console.log("Initialized marquee with " + marquee.childElementCount+" children");
+    } else if (rightEdge) {
+        // The right-most marquee on the list is just about to appear on screen.
+        if (e.index != index) {
+            // Image has changed; update content.
+            // This will change the width, add/remove marquee items as necessary
+            buildMarquee(e);
+            setScroll(e, -e.width);
+            let x0 = marquee.firstChild.x + marquee.firstChild.width;
+            // While distance from right-edge of first child to left-edge of last-child
+            // is greater than screenWidth, remove last Child.
+            let length = marquee.childElementCount;
+            while (marquee.lastChild.x - x0 > screenWidth) {
+                marquee.lastChild.remove();
             }
-            if (first) {
-                e.x = i == 0 ? 0 : marquee[0].width;
-            } else {
-                e.x = marquee[1 - i].x + marquee[1 - i].width;
+            // While distance from right-edge of the left-most to right-edge of the
+            // last item is less than screenwidth, add more items.
+            last = e;
+            while ((marquee.lastChild.x + marquee.lastChild.width) - x0 < screenWidth) {
+                setScroll(buildMarquee(null));
             }
-            e.x0 = e.x;
-            // e.x1 = screenWidth - marquee[0].width - marquee[1].width;        // good, but we need to adjust the item widths to fill
-            e.x1 = -e.width;
-            e.time0 = Date.now();
-            e.time1 = e.time0 + Math.abs(e.x0 - e.x1) / config.speed * 1000;
-            console.log("  set marquee " + i + " to " + e.x0 + "@" + (e.time0-Date.now()) + " to " + e.x1 + "@" + (e.time1-Date.now()));
+            if (marquee.childElementCount != length) {
+                console.log("  change marquee count from " + length + " to " + marquee.childElementCount);
+            }
+        } else {
+            setScroll(e, -e.width);
+        }
+    } else {
+        // The first marquee has scrolled completely off screen. Move it to the end.
+        let last = marquee.lastChild;
+        e.x = last.x + last.width;
+        marquee.appendChild(e);
+        setScroll(e);
+    }
+}
+
+/**
+ * Create (or repopulate an existing) marquee item.
+ * Set its x and width based on the previous item, if any
+ * If any items follow it, adjust their positions so they don't overlap this one
+ */
+function buildMarquee(e) {
+    const content = config.content[index];
+    const create = e == null;
+    if (create) {
+        e = document.createElement("div");
+        let last = marquee.lastChild;
+        marquee.appendChild(e);
+        e.x = last ? last.x + last.width : 0;
+    } else {
+        while (e.firstChild) {
+            e.firstChild.remove();
         }
     }
+    content.text.forEach((t) => {
+        let s = document.createElement("span");
+        s.appendChild(document.createTextNode(t));
+        e.appendChild(s);
+    });
+    e.index = index;
+    e.width = e.clientWidth;
+    if (!(e.width > 0)) {
+        throw new Error("Zero width");
+    }
+    for (let n=e.nextSibling;n;n=n.nextSibling) {
+        n.x = n.previousSibling.x + n.previousSibling.width;
+    }
+    return e;
 }
 
 function clock() {
@@ -101,17 +183,12 @@ function loader(c) {
             c.text = [ c.text ];
         }
     });
-    console.log("LOAD: " + JSON.stringify(config));
-    marquee = [
-        document.getElementById("marquee0"),
-        document.getElementById("marquee1")
-    ];
-    for (let i=0;i<2;i++) {
-        let e = marquee[i];
-        e.startX = e.x = e.width = 0;
-        e.startTime = Date.now();
+    marquee = document.getElementById("marquee");
+    while (marquee.firstChild) {
+        marquee.firstChild.remove();
     }
-    nextItem(null);
+    console.log("LOAD: " + JSON.stringify(config));
+    bump(null);
     requestAnimationFrame(scroller);
     clock();
     let callback = (e) => {
@@ -135,6 +212,7 @@ function loader(c) {
             e.addEventListener("load", () => { callback(e); });
         }
     });
+//    document.getElementById("clock").addEventListener("click",() => { running = !running });
 }
 
 function initialize() {
