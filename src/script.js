@@ -1,4 +1,5 @@
 const screenWidth = window.innerWidth;
+const PATH = "files/";
 let running = true;
 let config;
 let lastModified = null;
@@ -65,7 +66,7 @@ function setScroll(e, end) {
 function bump(e) {
     const first = e == null;
     const rightEdge = first || e.x1 > 0;
-    console.log("bump: " + (first ? "all" : desc(e)) + " at " + (rightEdge ? "right-edge":"left-edge")+ (first?"":": x="+e.x+" w="+e.width));
+    console.log("bump: " + (first ? "all" : desc(e)) + " at " + (rightEdge ? "right-edge":"left-edge")+ (first?"":": x="+e.x+" w="+e.width)+" delay="+(nextChange - Date.now()));
     if (Date.now() > nextChange && rightEdge) {
         index++;
         if (index == config.content.length) {
@@ -78,21 +79,30 @@ function bump(e) {
             time = 1;
         }
         let target;
+        let padding = content.padding;
+        padding = padding > 0 ? padding + "px" : 0;
         if ((index & 1) == 1 && content.video) {
             target = document.getElementById("video1");
-            target.src = content.video;
+            target.src = PATH + content.video + "?" + Math.random();
             target.poster = content.image;
         } else if ((index & 1) == 1) {
             target = document.getElementById("img1");
-            target.src = content.image;
+            target.src = PATH + content.image + "?" + Math.random();
         } else if (content.video) {
             target = document.getElementById("video0");
-            target.src = content.video;
+            target.src = PATH + content.video + "?" + Math.random();
             target.poster = content.image;
         } else {
             target = document.getElementById("img0");
-            target.src = content.image;
+            target.src = PATH + content.image + "?" + Math.random();
         }
+        if (content.drift) {
+            target.classList.add("kenburns");
+            target.style.setProperty("--time", content.time + "ms");
+        } else {
+            target.classList.remove("kenburns");
+        }
+        target.style.padding = padding;
         nextChange = Date.now() + time;
     }
     if (first) {
@@ -118,7 +128,11 @@ function bump(e) {
             // last item is less than screenwidth, add more items.
             last = e;
             while ((marquee.lastChild.x + marquee.lastChild.width) - x0 < screenWidth) {
-                setScroll(buildMarquee(null));
+                let m = buildMarquee(null);
+                setScroll(m);
+                if (!m.firstChild) {
+                    break;
+                }
             }
             if (marquee.childElementCount != length) {
                 console.log("  change marquee count from " + length + " to " + marquee.childElementCount);
@@ -153,18 +167,26 @@ function buildMarquee(e) {
             e.firstChild.remove();
         }
     }
-    content.text.forEach((t) => {
+    if (content.text) {
+        content.text.forEach((t) => {
+            let s = document.createElement("span");
+            s.appendChild(document.createTextNode(t));
+            e.appendChild(s);
+        });
+        e.index = index;
+        e.width = e.clientWidth;
+        if (!(e.width > 0)) {
+            throw new Error("Zero width");
+        }
+        for (let n=e.nextSibling;n;n=n.nextSibling) {
+            n.x = n.previousSibling.x + n.previousSibling.width;
+        }
+    } else {
         let s = document.createElement("span");
-        s.appendChild(document.createTextNode(t));
+        s.classList.add("empty");
         e.appendChild(s);
-    });
-    e.index = index;
-    e.width = e.clientWidth;
-    if (!(e.width > 0)) {
-        throw new Error("Zero width");
-    }
-    for (let n=e.nextSibling;n;n=n.nextSibling) {
-        n.x = n.previousSibling.x + n.previousSibling.width;
+        e.index = index;
+        e.width = content.time / 1000 * config.speed / 2;
     }
     return e;
 }
@@ -181,6 +203,18 @@ function loader(c) {
     config.content.forEach((c) => {
         if (typeof c.text == "string") {
             c.text = [ c.text ];
+        }
+        if (Array.isArray(c.text)) {
+            for (let i=0;i<c.text.length;i++) {
+                if (!typeof c.text[i] == "string" || c.text[i].length == 0) {
+                    c.text.splice(i--);
+                }
+            }
+            if (c.text.length == 0) {
+                delete c.text;
+            }
+        } else {
+            delete c.text;
         }
     });
     marquee = document.getElementById("marquee");
@@ -217,7 +251,7 @@ function loader(c) {
 
 function initialize() {
     // poll "config.js" every 5s and reload entire page if it's changed
-    fetch("config.js?" + Math.random()).then((r) => {
+    fetch(PATH + "config.js?" + Math.random()).then((r) => {
         let when = new Date(r.headers.get("last-modified")).getTime();
         if (lastModified == null) {
             lastModified = when;

@@ -9,15 +9,17 @@ video, img {
     top: 0;
     width: 100vw;
     height: 100vh;
-    object-fit: cover;
+    object-fit: contain;
+    box-sizing: border-box;
 }
 #marquee {
     position:absolute;
     bottom: 0;
     height: 1.1em;
     width: 100vw;
-    background: #FFF8;
+    /*background: #FFF8; */
     white-space: nowrap;
+    text-shadow: -2px -2px 0 white, 2px -2px 0 white, 2px 2px 0 white, -2px 2px 0 white;
 }
 #marquee > * {
     position: absolute;
@@ -25,16 +27,23 @@ video, img {
     top: 0;
     will-change: transform;
 }
+#marquee > *.empty {
+    background: none;
+}
 #marquee > * > span::after {
-    content: "\2022";
+/*    content: "\2022"; */
+    content: "";
     padding: 0 1em;
 }
 #clock {
     position: absolute;
-    background: #FFF8;
-    top: 0;
-    left: 0;
-    width: 100vw;
+    background: transparent;
+    top: 8px;
+    right: 8px;
+    width: 8em;
+    font-size: 0.5em;
+    color: black;
+    text-shadow: -2px -2px 0 white, 2px -2px 0 white, 2px 2px 0 white, -2px 2px 0 white;
     height: 1.1em;
     text-align: center;
 }
@@ -45,7 +54,7 @@ video, img {
     animation: 1s linear forwards fade-in;
 }
 img.fade.fade-active.kenburns {
-    animation: 1s linear forwards fade-in, 40s linear forwards kenburns
+    animation: 1s linear forwards fade-in, var(--time) linear forwards kenburns
 }
 @keyframes fade-out {
   0% {
@@ -72,6 +81,6 @@ img.fade.fade-active.kenburns {
     transform: scale(1);
   }
   100% {
-    transform: scale(1.4);
+    transform: scale(1.1);
   }
 }
