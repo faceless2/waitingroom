@@ -1,0 +1,19 @@
+# The file needs to be called "config-yaml.txt" in the "files" folder
+# Any time you update this file, the page is reloaded
+
+speed: 200      # how fast any text scrolls (pixels per second
+content:
+
+  - image: "file.jpg"                 # path to the image; put it in quotes if it has spaces
+    drift: 1.1                        # 1 means no "creap", 1.1 means it grows by 10% etc
+    time: 15                          # how many seconds you want this to be on screen
+    padding: 0                        # if you want some padding around the image/video
+    text: "Scroll some text here"     # this text scrolls along the bottom of the scren
+    background: "red"                 # can be set to change background color behind image
+
+  - video: "video.mp4"                # path to the video; put it in quotes if it has spaces
+    image: "video-still.jpg"          # optional still to the video
+    time: 15                          # how many seconds you want this to be on screen
+    padding: 0                        # if you want some padding around the image/video
+    text: "Scroll some text here"     # this text scrolls along the bottom of the scren
+

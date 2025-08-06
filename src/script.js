@@ -1,5 +1,7 @@
-const screenWidth = window.innerWidth;
 const PATH = "files/";
+const CONFIG = "config-yaml.txt";
+
+const screenWidth = window.innerWidth;
 let running = true;
 let config;
 let lastModified = null;
@@ -96,14 +98,16 @@ function bump(e) {
             target = document.getElementById("img0");
             target.src = PATH + content.image + "?" + Math.random();
         }
+        document.body.style.background = typeof content.background == "string" ? content.background: null;
         if (content.drift) {
             target.classList.add("kenburns");
-            target.style.setProperty("--time", content.time + "ms");
+            target.style.setProperty("--time", content.time + "s");
+            target.style.setProperty("--drift", content.drift);
         } else {
             target.classList.remove("kenburns");
         }
         target.style.padding = padding;
-        nextChange = Date.now() + time;
+        nextChange = Date.now() + time * 1000;
     }
     if (first) {
         while (marquee.childElementCount < 2 || marquee.lastChild.x < screenWidth) {
@@ -181,12 +185,13 @@ function buildMarquee(e) {
         for (let n=e.nextSibling;n;n=n.nextSibling) {
             n.x = n.previousSibling.x + n.previousSibling.width;
         }
+        marquee.classList.remove("empty");
     } else {
         let s = document.createElement("span");
-        s.classList.add("empty");
         e.appendChild(s);
         e.index = index;
-        e.width = content.time / 1000 * config.speed / 2;
+        e.width = content.time * config.speed / 2;
+        marquee.classList.add("empty");
     }
     return e;
 }
@@ -251,12 +256,12 @@ function loader(c) {
 
 function initialize() {
     // poll "config.js" every 5s and reload entire page if it's changed
-    fetch(PATH + "config.js?" + Math.random()).then((r) => {
+    fetch(PATH + CONFIG "?" + Math.random()).then((r) => {
         let when = new Date(r.headers.get("last-modified")).getTime();
         if (lastModified == null) {
             lastModified = when;
-            r.json().then((j) => {
-                loader(j);
+            r.text().then((text) => {
+                loader(jsyaml.load(text));
             });
         } else if (when > lastModified) {
             location.reload();
